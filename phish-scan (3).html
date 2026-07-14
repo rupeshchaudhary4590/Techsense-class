@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LINK FORENSICS // phish-scan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Share+Tech+Mono&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #08070d;
+    --panel: #0f0d19;
+    --panel-2: #171325;
+    --border: #2a2440;
+    --border-soft: #1d1930;
+    --text: #ece8f7;
+    --muted: #8b84a8;
+    --muted-dim: #524a72;
+    --safe: #43e8b0;
+    --warn: #ffb454;
+    --danger: #ff5470;
+    --violet: #a78bfa;
+    --grid: #1a1628;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, #1c1530 0%, transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+    min-height:100vh;
+  }
+  .mono{
+    font-family: 'Share Tech Mono', 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    letter-spacing: 0.3px;
+  }
+  .display{
+    font-family: 'Orbitron', 'Space Grotesk', 'Inter', -apple-system, sans-serif;
+    letter-spacing: 0.4px;
+  }
+  .wrap{
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 40px 20px 70px;
+  }
+
+  /* ---- Header / case file eyebrow ---- */
+  .eyebrow{
+    display:flex; align-items:center; gap:10px;
+    font-size: 11px;
+    letter-spacing: 1.6px;
+    color: var(--muted-dim);
+    margin-bottom: 10px;
+  }
+  .eyebrow .line{ flex:1; height:1px; background: var(--border-soft); }
+  .back-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    background: transparent;
+    border: 1px solid var(--border-soft);
+    color: var(--muted);
+    font-size: 10.5px;
+    letter-spacing: 0.6px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  }
+  .back-btn:hover{
+    border-color: var(--violet);
+    color: var(--violet);
+    background: rgba(167,139,250,0.08);
+  }
+  .back-btn:active{ transform: scale(0.96) translateX(-2px); }
+  h1.display{
+    font-size: 24px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin: 0 0 6px 0;
+    letter-spacing: 2px;
+  }
+  h1.display .accent{ color: var(--violet); }
+  .subtitle{
+    font-size: 13.5px;
+    color: var(--muted);
+    margin: 0 0 14px 0;
+    max-width: 480px;
+    line-height: 1.5;
+  }
+  .trust-strip{
+    display:flex; flex-wrap:wrap;
+    gap: 8px 18px;
+    margin-bottom: 26px;
+  }
+  .trust-item{
+    display:flex; align-items:center; gap:7px;
+    font-size: 10.5px;
+    color: var(--muted-dim);
+    letter-spacing: 0.2px;
+  }
+  .trust-dot{
+    width:6px; height:6px; border-radius:50%;
+    background: var(--safe);
+    box-shadow: 0 0 6px var(--safe);
+    flex-shrink:0;
+  }
+
+  /* ---- Input dossier bar ---- */
+  .dossier{
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .field-label{
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    color: var(--muted-dim);
+    margin-bottom: 8px;
+  }
+  .input-row{
+    display:flex; gap: 10px;
+  }
+  .input-row input{
+    flex:1;
+    background: var(--bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 6px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-size: 14px;
+    outline:none;
+    transition: border-color 0.15s ease;
+  }
+  .input-row input:focus{ border-color: var(--violet); }
+  .input-row input::placeholder{ color: var(--muted-dim); }
+  button#scanBtn{
+    background: var(--violet);
+    color: #150f28;
+    border:none;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.4px;
+    padding: 0 20px;
+    border-radius: 6px;
+    cursor:pointer;
+    transition: opacity 0.15s ease, transform 0.08s ease;
+  }
+  button#scanBtn:hover{ opacity: 0.87; }
+  button#scanBtn:active{ transform: scale(0.97); }
+  button#scanBtn:disabled{ opacity:0.35; cursor:not-allowed; }
+
+  /* ---- Radar ---- */
+  .radar-section{
+    display:flex; justify-content:center;
+    margin: 34px 0 8px;
+  }
+  .radar-wrap{ position:relative; width:280px; height:280px; }
+  .radar-wrap svg{ width:100%; height:100%; overflow:visible; }
+  .ring{ fill:none; stroke: var(--grid); stroke-width:1; }
+  .crosshair{ stroke: var(--grid); stroke-width:1; }
+  .sweep{
+    transform-origin: 140px 140px;
+    animation: spin 3.2s linear infinite;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .sweep.active{ opacity: 1; }
+  @keyframes spin{ from{ transform: rotate(0deg); } to{ transform: rotate(360deg); } }
+
+  .blip{
+    opacity: 0;
+    transform-origin: center;
+  }
+  .blip.show{
+    animation: blipIn 0.4s ease forwards;
+  }
+  @keyframes blipIn{
+    from{ opacity:0; transform: scale(0); }
+    to{ opacity:1; transform: scale(1); }
+  }
+  .blip-pulse{
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity: 0.55; r: 5; }
+    50%{ opacity: 0.15; r: 11; }
+  }
+
+  .radar-center{
+    position:absolute; top:50%; left:50%;
+    transform: translate(-50%,-50%);
+    text-align:center;
+    pointer-events:none;
+  }
+  .radar-center .domain{
+    font-size: 11px;
+    color: var(--muted);
+    max-width: 140px;
+    word-break: break-all;
+    line-height:1.3;
+  }
+  .radar-center .placeholder{
+    font-size: 11.5px;
+    color: var(--muted-dim);
+  }
+
+  /* ---- Verdict banner ---- */
+  .verdict-banner{
+    display:none;
+    margin-top: 20px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 10px;
+    padding: 20px 22px;
+    align-items:center;
+    gap: 20px;
+  }
+  .verdict-banner.show{ display:flex; animation: fadein 0.4s ease; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .score-block{ text-align:center; flex-shrink:0; }
+  .score-num{
+    font-size: 40px;
+    font-weight: 700;
+    line-height:1;
+  }
+  .score-max{ font-size: 13px; color: var(--muted-dim); }
+  .verdict-copy .tag{
+    display:inline-block;
+    font-size: 10.5px;
+    font-weight:700;
+    letter-spacing: 0.8px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    margin-bottom: 7px;
+  }
+  .verdict-copy h2{
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 0 0 5px 0;
+  }
+  .verdict-copy p{
+    font-size: 12.5px;
+    color: var(--muted);
+    margin:0;
+    line-height:1.45;
+  }
+
+  /* ---- Category cards ---- */
+  .categories{
+    margin-top: 22px;
+    display:none;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .categories.show{ display:flex; }
+
+  .cat-card{
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 10px;
+    overflow:hidden;
+  }
+  .cat-head{
+    display:flex; align-items:center; gap:10px;
+    padding: 12px 16px;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .cat-head .cat-icon{
+    width: 22px; height:22px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:5px;
+    font-size: 11px;
+    flex-shrink:0;
+  }
+  .cat-head .cat-name{
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .cat-head .cat-count{
+    margin-left:auto;
+    font-size: 10.5px;
+    color: var(--muted-dim);
+  }
+  .check-row{
+    display:flex; gap: 12px;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .check-row:last-child{ border-bottom:none; }
+  .check-tag{
+    font-size: 9.5px;
+    font-weight:700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    height: fit-content;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+  }
+  .check-tag.fail{ background:#ff54701f; color: var(--danger); border:1px solid #ff547044; }
+  .check-tag.warn{ background:#ffb4541f; color: var(--warn); border:1px solid #ffb45444; }
+  .check-tag.pass{ background:#43e8b01f; color: var(--safe); border:1px solid #43e8b044; }
+
+  /* ---- Flag legend ---- */
+  .legend{
+    display:flex; flex-wrap:wrap;
+    gap: 8px 20px;
+    margin: 14px 0 26px;
+    padding: 12px 16px;
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    background: var(--panel);
+  }
+  .legend-item{
+    display:flex; align-items:center; gap:8px;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .legend-flag{
+    font-size: 13px;
+    line-height:1;
+  }
+  .legend-item b{ color: var(--text); }
+  .check-body .label{ font-size: 13px; font-weight:600; margin-bottom:2px; }
+  .check-body .desc{ font-size: 12px; color: var(--muted); line-height:1.4; }
+
+  .footnote{
+    margin-top: 22px;
+    font-size: 11px;
+    color: var(--muted-dim);
+    line-height: 1.6;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-soft);
+    display:none;
+  }
+  .footnote.show{ display:block; }
+
+  @media (max-width: 480px){
+    .radar-wrap{ width: 230px; height:230px; }
+    .sweep{ transform-origin: 115px 115px; }
+  }
+
+  /* ---- Landing screen ---- */
+  html,body{ overflow-x:hidden; }
+  .landing{
+    position: fixed;
+    inset: 0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index: 50;
+    background:
+      radial-gradient(ellipse 700px 500px at 50% 40%, #221a3d 0%, transparent 65%),
+      var(--bg);
+    transition: opacity 0.55s ease, transform 0.55s ease;
+  }
+  .landing.hide{
+    opacity: 0;
+    transform: scale(1.04);
+    pointer-events: none;
+  }
+  .landing-grid{
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 42px 42px;
+    -webkit-mask-image: radial-gradient(ellipse 600px 460px at 50% 45%, #000 20%, transparent 75%);
+            mask-image: radial-gradient(ellipse 600px 460px at 50% 45%, #000 20%, transparent 75%);
+    animation: gridPan 16s linear infinite;
+  }
+  @keyframes gridPan{
+    from{ background-position: 0 0, 0 0; }
+    to{ background-position: 42px 42px, 42px 42px; }
+  }
+
+  .landing-inner{
+    position:relative;
+    z-index:2;
+    text-align:center;
+    padding: 20px;
+    max-width: 520px;
+  }
+  .landing-eyebrow{
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted-dim);
+    margin-bottom: 18px;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+  }
+  .landing-eyebrow .blinker{
+    width:7px; height:7px; border-radius:50%;
+    background: var(--safe);
+    box-shadow: 0 0 8px var(--safe);
+    animation: blink 1.4s ease-in-out infinite;
+  }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+
+  .landing-title{
+    font-size: 46px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    line-height: 1.15;
+    margin: 0 0 6px 0;
+    background: linear-gradient(180deg, #f4f1fc 0%, #b9adf0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 46px rgba(167,139,250,0.35);
+  }
+  .landing-title .dot{ color: var(--violet); -webkit-text-fill-color: var(--violet); }
+
+  .landing-typed{
+    min-height: 20px;
+    font-size: 13px;
+    color: var(--safe);
+    letter-spacing: 0.3px;
+    margin: 14px 0 30px;
+  }
+  .landing-typed .cursor{
+    display:inline-block;
+    width:7px; height:14px;
+    background: var(--safe);
+    margin-left:3px;
+    vertical-align: -2px;
+    animation: blink 0.9s steps(1) infinite;
+  }
+
+  .enter-btn{
+    position:relative;
+    background: var(--violet);
+    color: #150f28;
+    border:none;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1.2px;
+    padding: 17px 34px;
+    border-radius: 8px;
+    cursor:pointer;
+    opacity:0;
+    transform: translateY(10px) scale(0.97);
+    transition: opacity 0.5s ease, transform 0.5s ease, box-shadow 0.25s ease;
+    box-shadow: 0 0 0 0 rgba(167,139,250,0.5);
+  }
+  .enter-btn.ready{
+    opacity:1;
+    transform: translateY(0) scale(1);
+    animation: btnPulse 2.4s ease-in-out infinite;
+  }
+  .enter-btn:hover{ box-shadow: 0 0 32px 4px rgba(167,139,250,0.55); }
+  .enter-btn:active{ transform: scale(0.96); }
+  @keyframes btnPulse{
+    0%,100%{ box-shadow: 0 0 0 0 rgba(167,139,250,0.35); }
+    50%{ box-shadow: 0 0 0 10px rgba(167,139,250,0); }
+  }
+
+  .landing-foot{
+    margin-top: 22px;
+    font-size: 10.5px;
+    color: var(--muted-dim);
+    letter-spacing: 0.4px;
+    opacity:0;
+    transition: opacity 0.6s ease 0.15s;
+  }
+  .landing-foot.ready{ opacity:1; }
+
+  .flash{
+    position:fixed; inset:0;
+    background: #ece8f7;
+    opacity:0;
+    z-index: 60;
+    pointer-events:none;
+  }
+  .flash.fire{
+    animation: flashFire 0.5s ease forwards;
+  }
+  @keyframes flashFire{
+    0%{ opacity:0; }
+    12%{ opacity:0.85; }
+    100%{ opacity:0; }
+  }
+
+  #appView{
+    opacity:0;
+    transform: translateY(14px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  #appView.show{ opacity:1; transform: translateY(0); }
+
+  @media (max-width: 480px){
+    .landing-title{ font-size: 32px; letter-spacing: 3px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="flash" id="flash"></div>
+
+<div class="landing" id="landing">
+  <div class="landing-grid"></div>
+  <div class="landing-inner">
+    <div class="landing-eyebrow mono"><span class="blinker"></span>SYSTEM READY</div>
+    <h1 class="landing-title display">LINK<br>FORENSICS<span class="dot">.</span></h1>
+    <div class="landing-typed mono" id="typedLine"><span class="cursor"></span></div>
+    <button id="enterBtn" class="enter-btn mono">CLICK HERE TO CHECK LINK</button>
+    <div class="landing-foot mono" id="landingFoot">17 rule-based checks · 5 categories · 100% local — no data leaves your browser</div>
+  </div>
+</div>
+
+<div class="wrap" id="appView" style="display:none;">
+
+  <div class="eyebrow mono">
+    <button id="backBtn" class="back-btn mono">← BACK</button>
+    <span>CASE FILE · LINK FORENSICS</span>
+    <div class="line"></div>
+    <span>v3.1</span>
+  </div>
+
+  <h1 class="display">phish<span class="accent">·</span>scan</h1>
+  <p class="subtitle">Paste any link — phishing page, malware download, scam redirect. 17 rule-based checks across 5 categories run locally in your browser and plot onto the radar.</p>
+  <div class="trust-strip mono" id="trustStrip">
+    <span class="trust-item"><span class="trust-dot"></span>100% client-side — no requests leave your browser</span>
+    <span class="trust-item"><span class="trust-dot"></span>17 open, inspectable rules — no black-box scoring</span>
+  </div>
+
+  <div class="legend mono" id="legend">
+    <div class="legend-item"><span class="legend-flag">🟢</span><span><b>Green flag</b> — check passed, no concern</span></div>
+    <div class="legend-item"><span class="legend-flag">🟡</span><span><b>Yellow flag</b> — minor/moderate concern</span></div>
+    <div class="legend-item"><span class="legend-flag">🔴</span><span><b>Red flag</b> — strong phishing indicator</span></div>
+  </div>
+
+  <div class="dossier">
+    <div class="field-label mono">SUBJECT URL</div>
+    <div class="input-row">
+      <input id="urlInput" class="mono" type="text" placeholder="http://paypa1-secure.verify-login.xyz" autocomplete="off">
+      <button id="scanBtn" class="mono">SCAN</button>
+    </div>
+  </div>
+
+  <div class="radar-section">
+    <div class="radar-wrap">
+      <svg viewBox="0 0 280 280">
+        <circle class="ring" cx="140" cy="140" r="30"></circle>
+        <circle class="ring" cx="140" cy="140" r="65"></circle>
+        <circle class="ring" cx="140" cy="140" r="100"></circle>
+        <circle class="ring" cx="140" cy="140" r="130"></circle>
+        <line class="crosshair" x1="140" y1="10" x2="140" y2="270"></line>
+        <line class="crosshair" x1="10" y1="140" x2="270" y2="140"></line>
+
+        <g class="sweep" id="sweep">
+          <defs>
+            <linearGradient id="sweepGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#a78bfa" stop-opacity="0"></stop>
+              <stop offset="100%" stop-color="#a78bfa" stop-opacity="0.35"></stop>
+            </linearGradient>
+          </defs>
+          <path d="M140,140 L140,10 A130,130 0 0,1 253,90 Z" fill="url(#sweepGrad)"></path>
+        </g>
+
+        <g id="blipLayer"></g>
+      </svg>
+      <div class="radar-center">
+        <div class="placeholder mono" id="radarPlaceholder">awaiting input</div>
+        <div class="domain mono" id="radarDomain" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict-banner" id="verdictBanner">
+    <div class="score-block">
+      <div class="score-num mono" id="scoreNum">0</div>
+      <div class="score-max mono">/100</div>
+    </div>
+    <div class="verdict-copy">
+      <div class="tag mono" id="verdictTag">SAFE</div>
+      <h2 class="display" id="verdictTitle">—</h2>
+      <p id="verdictSub">—</p>
+    </div>
+  </div>
+
+  <div class="categories" id="categories"></div>
+
+  <div class="footnote mono" id="footnote">
+    <strong style="color:var(--muted);">What this checks:</strong> URL structure, brand impersonation, redirect
+    tricks, and delivery patterns tied to phishing, malware links, and scam redirects — all rule-based, all visible above.<br><br>
+    <strong style="color:var(--muted);">What this can't check:</strong> live threat-intel blocklists, the actual
+    content rendered at the destination, redirect chains beyond this one link, or brand-new malicious
+    infrastructure that doesn't match these patterns. A low score narrows risk — it doesn't certify safety.
+    Always verify sender identity before entering credentials or downloading anything.
+  </div>
+
+</div>
+
+<script>
+const KNOWN_BRANDS = [
+  "google","facebook","paypal","apple","microsoft","amazon","netflix","instagram",
+  "whatsapp","bankofamerica","wellsfargo","chase","dropbox","linkedin","yahoo",
+  "outlook","icloud","binance","coinbase","ebay","adobe","github","esewa","khalti",
+  "nabilbank","nicasiabank","nmb","nepalbank"
+];
+const SHORTENERS = [
+  "bit.ly","tinyurl.com","t.co","goo.gl","ow.ly","is.gd","buff.ly","rebrand.ly",
+  "cutt.ly","shorte.st","tiny.cc","rb.gy","bl.ink"
+];
+const SUSPICIOUS_TLDS = [
+  "zip","mov","xyz","top","click","link","gq","tk","ml","cf","ga","work","country","kim","review","ru"
+];
+
+const CATEGORIES = {
+  structure: { name: "STRUCTURE", icon: "◧", color: "#a78bfa" },
+  deception: { name: "DECEPTION", icon: "◈", color: "#ff5470" },
+  trust:     { name: "TRUST SIGNALS", icon: "◇", color: "#ffb454" },
+  urgency:   { name: "URGENCY LANGUAGE", icon: "◆", color: "#43e8b0" },
+  delivery:  { name: "DELIVERY RISK", icon: "▲", color: "#ff8a3d" }
+};
+const CAT_ORDER = ["structure","deception","trust","urgency","delivery"];
+const CAT_ANGLE_RANGE = {
+  structure: [0, 56],
+  deception: [72, 128],
+  trust: [144, 200],
+  urgency: [216, 256],
+  delivery: [272, 344]
+};
+
+function levenshtein(a, b){
+  const dp = Array.from({length:a.length+1}, () => new Array(b.length+1).fill(0));
+  for(let i=0;i<=a.length;i++) dp[i][0]=i;
+  for(let j=0;j<=b.length;j++) dp[0][j]=j;
+  for(let i=1;i<=a.length;i++){
+    for(let j=1;j<=b.length;j++){
+      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function analyze(raw){
+  const checks = [];
+  let hostname = "", pathname = "", search = "", protocol = "";
+  let parsed = null;
+  let candidate = raw.trim();
+  if(!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(candidate)) candidate = "http://" + candidate;
+
+  try{
+    parsed = new URL(candidate);
+    hostname = parsed.hostname.toLowerCase();
+    pathname = parsed.pathname.toLowerCase();
+    search = parsed.search.toLowerCase();
+    protocol = parsed.protocol.replace(":","");
+  }catch(e){
+    return { error:true, hostname: raw, checks: [{cat:"structure", pass:false, weight:35, label:"Could not parse URL", desc:"This doesn't have a valid URL structure at all — suspicious if it arrived as a clickable link."}], score: 70 };
+  }
+
+  const hostParts = hostname.split(".");
+  const registrable = hostParts.length >= 2 ? hostParts[hostParts.length-2] : hostname;
+
+  // STRUCTURE
+  const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if(ipPattern.test(hostname)){
+    checks.push({cat:"structure", pass:false, weight:25, label:"Raw IP address as host", desc:"Legitimate sites rarely expose a bare IP instead of a domain name."});
+  } else {
+    checks.push({cat:"structure", pass:true, weight:0, label:"Host is a proper domain", desc:"No raw IP literal used as the address."});
+  }
+
+  if(hostname.includes("xn--")){
+    checks.push({cat:"structure", pass:false, weight:20, label:"Punycode-encoded domain", desc:"Uses internationalized characters encoded as punycode — often mimics Latin letters with look-alike Unicode."});
+  } else {
+    checks.push({cat:"structure", pass:true, weight:0, label:"No punycode/homograph tricks", desc:"Domain isn't disguising look-alike Unicode characters."});
+  }
+
+  const subCount = Math.max(0, hostParts.length - 2);
+  if(subCount >= 3){
+    checks.push({cat:"structure", pass:false, weight:15, label:`Deep subdomain chain (${hostParts.length} parts)`, desc:"Long subdomain chains can bury a fake brand name while the real registered domain sits at the end."});
+  } else {
+    checks.push({cat:"structure", pass:true, weight:0, label:"Normal subdomain depth", desc:"No subdomain-stacking pattern detected."});
+  }
+
+  const hyphenCount = (registrable.match(/-/g) || []).length;
+  if(hyphenCount >= 2){
+    checks.push({cat:"structure", pass:false, weight:10, label:"Excessive hyphens in domain", desc:"Multi-hyphen domains are frequently registered for phishing once the exact brand match is unavailable."});
+  } else {
+    checks.push({cat:"structure", pass:true, weight:0, label:"Normal hyphen usage", desc:"No excessive hyphenation in the domain."});
+  }
+
+  if(raw.length > 90){
+    checks.push({cat:"structure", pass:false, weight:8, label:"Unusually long URL", desc:"Long, cluttered URLs sometimes bury the real destination or pack in obfuscation."});
+  } else {
+    checks.push({cat:"structure", pass:true, weight:0, label:"Reasonable URL length", desc:"Length falls in a normal range."});
+  }
+
+  // DECEPTION
+  if(raw.includes("@")){
+    checks.push({cat:"deception", pass:false, weight:25, label:"Contains an '@' redirect trick", desc:"Everything before '@' is ignored by browsers — attackers exploit this to disguise the real destination."});
+  } else {
+    checks.push({cat:"deception", pass:true, weight:0, label:"No '@' redirection trick", desc:"No disguised destination via '@' symbol."});
+  }
+
+  let typosquat = null;
+  for(const brand of KNOWN_BRANDS){
+    if(registrable === brand) continue;
+    const dist = levenshtein(registrable, brand);
+    if(dist > 0 && dist <= 2 && Math.abs(registrable.length - brand.length) <= 2 && brand.length >= 4){
+      typosquat = {brand, dist}; break;
+    }
+  }
+  if(typosquat){
+    checks.push({cat:"deception", pass:false, weight:30, label:`Typosquat of "${typosquat.brand}"`, desc:`"${registrable}" is suspiciously close to "${typosquat.brand}" (edit distance ${typosquat.dist}) — a hallmark of look-alike phishing domains.`});
+  } else {
+    checks.push({cat:"deception", pass:true, weight:0, label:"No brand impersonation detected", desc:"Domain doesn't closely resemble a well-known brand name."});
+  }
+
+  // TRUST SIGNALS
+  if(protocol !== "https"){
+    checks.push({cat:"trust", pass:false, weight:10, label:"Not using HTTPS", desc:"Legitimate login/payment pages almost always use HTTPS. Plain HTTP is a yellow flag."});
+  } else {
+    checks.push({cat:"trust", pass:true, weight:0, label:"Uses HTTPS", desc:"Connection would be encrypted (note: phishing sites can have valid HTTPS too)."});
+  }
+
+  const tld = hostParts[hostParts.length-1];
+  if(SUSPICIOUS_TLDS.includes(tld)){
+    checks.push({cat:"trust", pass:false, weight:10, label:`High-abuse TLD (.${tld})`, desc:"Cheap to register with little verification — disproportionately used in phishing/malware."});
+  } else {
+    checks.push({cat:"trust", pass:true, weight:0, label:"Standard TLD", desc:`.${tld} isn't among TLDs commonly associated with abuse.`});
+  }
+
+  if(SHORTENERS.some(s => hostname === s || hostname.endsWith("."+s))){
+    checks.push({cat:"trust", pass:false, weight:15, label:"Uses a link shortener", desc:"Hides the real destination until clicked — commonly used to bypass spam filters."});
+  } else {
+    checks.push({cat:"trust", pass:true, weight:0, label:"Not a known shortener", desc:"Domain isn't a common URL-shortening service."});
+  }
+
+  // URGENCY
+  const keywords = ["login","verify","secure","account","update","confirm","signin","password","banking","bank","suspended","unlock"];
+  const hitKeywords = keywords.filter(k => pathname.includes(k) || search.includes(k) || hostname.includes(k));
+  if(hitKeywords.length >= 2){
+    checks.push({cat:"urgency", pass:false, weight:15, label:"Urgency keyword stacking", desc:`Found: ${[...new Set(hitKeywords)].join(", ")}. Phishing links stack these words to prompt hasty clicking.`});
+  } else {
+    checks.push({cat:"urgency", pass:true, weight:0, label:"No keyword stacking", desc:"URL doesn't pile on urgency-related language."});
+  }
+  if(hitKeywords.length === 1){
+    checks.push({cat:"urgency", pass:false, weight:5, label:`Single urgency keyword: "${hitKeywords[0]}"`, desc:"One urgency/credential-related word alone isn't damning, but it's worth noticing."});
+  } else if(hitKeywords.length === 0){
+    checks.push({cat:"urgency", pass:true, weight:0, label:"No credential-related keywords", desc:"No login/verify/account-type wording anywhere in the link."});
+  }
+
+  // DELIVERY RISK
+  if(["javascript","data","vbscript","file"].includes(protocol)){
+    checks.push({cat:"delivery", pass:false, weight:35, label:`Executes via "${protocol}:" URI`, desc:"This isn't a normal web address — it's a script or data URI that can run code or open local resources directly the moment it's opened. Almost never legitimate in a shared link."});
+  } else {
+    checks.push({cat:"delivery", pass:true, weight:0, label:"Standard web protocol", desc:"Uses a normal http/https scheme rather than a script-executing URI."});
+  }
+
+  const dangerousExt = /\.(exe|scr|bat|cmd|msi|apk|jar|vbs|ps1|dll|lnk|com|pif)(\?|$)/i;
+  if(dangerousExt.test(pathname)){
+    checks.push({cat:"delivery", pass:false, weight:25, label:"Links directly to an executable file", desc:"The path ends in a file type (.exe, .apk, .msi, etc.) that can install software immediately on click — a common malware-delivery pattern."});
+  } else {
+    checks.push({cat:"delivery", pass:true, weight:0, label:"No direct executable download", desc:"Path doesn't point straight at an installable/executable file type."});
+  }
+
+  const redirectParams = ["redirect","url","next","return","dest","destination","continue","rurl","target","out"];
+  let openRedirect = false;
+  try{
+    for(const key of redirectParams){
+      const val = parsed.searchParams.get(key);
+      if(val && /^https?(:\/\/|%3a%2f%2f)/i.test(val)){ openRedirect = true; break; }
+    }
+  }catch(e){}
+  if(openRedirect){
+    checks.push({cat:"delivery", pass:false, weight:15, label:"Possible open-redirect parameter", desc:"A query parameter points to another full URL — sometimes used to launder a trusted domain into silently forwarding to a malicious one."});
+  } else {
+    checks.push({cat:"delivery", pass:true, weight:0, label:"No redirect-chaining parameters", desc:"No query parameter appears to be forwarding to a separate external URL."});
+  }
+
+  const percentEncodedCount = (raw.match(/%[0-9a-fA-F]{2}/g) || []).length;
+  if(percentEncodedCount >= 6){
+    checks.push({cat:"delivery", pass:false, weight:10, label:"Heavy percent-encoding", desc:`${percentEncodedCount} encoded characters found. Heavy obfuscation is sometimes used to slip a malicious URL past filters or a quick visual check.`});
+  } else {
+    checks.push({cat:"delivery", pass:true, weight:0, label:"No heavy obfuscation", desc:"URL isn't unusually laden with percent-encoded characters."});
+  }
+
+  const score = Math.min(100, checks.reduce((s,c) => s + c.weight, 0));
+  return { error:false, hostname, checks, score };
+}
+
+function polarToXY(cx, cy, r, angleDeg){
+  const rad = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function renderRadarBlips(res){
+  const layer = document.getElementById("blipLayer");
+  layer.innerHTML = "";
+  const cx = 140, cy = 140;
+  const grouped = {};
+  CAT_ORDER.forEach(c => grouped[c] = []);
+  res.checks.forEach(c => grouped[c.cat].push(c));
+
+  let delay = 0;
+  CAT_ORDER.forEach(catKey => {
+    const items = grouped[catKey];
+    const [aStart, aEnd] = CAT_ANGLE_RANGE[catKey];
+    const catColor = CATEGORIES[catKey].color;
+    items.forEach((item, i) => {
+      const angle = items.length === 1 ? (aStart+aEnd)/2 : aStart + (aEnd-aStart) * (i/(items.length-1));
+      const radius = item.pass ? 118 : Math.max(28, 118 - (item.weight/30)*90);
+      const {x, y} = polarToXY(cx, cy, radius, angle);
+      const color = item.pass ? "#43e8b0" : catColor;
+
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("class", "blip");
+      g.style.animationDelay = `${delay}ms`;
+      delay += 55;
+
+      if(!item.pass){
+        const pulse = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        pulse.setAttribute("cx", x); pulse.setAttribute("cy", y); pulse.setAttribute("r", 5);
+        pulse.setAttribute("fill", color);
+        pulse.setAttribute("class", "blip-pulse");
+        g.appendChild(pulse);
+      }
+
+      const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("r", item.pass ? 3 : 5);
+      dot.setAttribute("fill", color);
+      dot.setAttribute("stroke", "#08070d");
+      dot.setAttribute("stroke-width", "1.5");
+      g.appendChild(dot);
+
+      layer.appendChild(g);
+      requestAnimationFrame(() => g.classList.add("show"));
+    });
+  });
+}
+
+function animateScore(target){
+  const el = document.getElementById("scoreNum");
+  let current = 0;
+  const step = Math.max(1, Math.round(target/24));
+  const iv = setInterval(() => {
+    current += step;
+    if(current >= target){ current = target; clearInterval(iv); }
+    el.textContent = current;
+  }, 22);
+}
+
+function renderResult(res){
+  document.getElementById("radarPlaceholder").style.display = "none";
+  const domainEl = document.getElementById("radarDomain");
+  domainEl.style.display = "block";
+  domainEl.textContent = res.hostname;
+
+  renderRadarBlips(res);
+
+  const score = res.score;
+  let color, tag, title, sub;
+  if(score >= 55){
+    color = "var(--danger)"; tag = "🔴 RED FLAG · HIGH RISK";
+    title = "Multiple strong phishing indicators";
+    sub = "This URL shows several patterns commonly seen in phishing links. Avoid clicking or entering any information.";
+  } else if(score >= 25){
+    color = "var(--warn)"; tag = "🟡 YELLOW FLAG · SUSPICIOUS";
+    title = "Some red flags present";
+    sub = "Not conclusive alone, but this URL has traits worth double-checking before you trust it.";
+  } else {
+    color = "var(--safe)"; tag = "🟢 GREEN FLAG · LOW RISK";
+    title = "No major structural red flags";
+    sub = "Structure doesn't show common phishing patterns. Still verify the sender and context.";
+  }
+
+  const banner = document.getElementById("verdictBanner");
+  const scoreNum = document.getElementById("scoreNum");
+  const verdictTag = document.getElementById("verdictTag");
+  scoreNum.style.color = color;
+  verdictTag.textContent = tag;
+  verdictTag.style.background = color === "var(--danger)" ? "#ff547022" : color === "var(--warn)" ? "#ffb45422" : "#43e8b022";
+  verdictTag.style.color = color;
+  verdictTag.style.border = `1px solid ${color === "var(--danger)" ? "#ff547055" : color === "var(--warn)" ? "#ffb45455" : "#43e8b055"}`;
+  document.getElementById("verdictTitle").textContent = title;
+  document.getElementById("verdictSub").textContent = sub;
+  banner.classList.add("show");
+  animateScore(score);
+
+  const catsEl = document.getElementById("categories");
+  catsEl.innerHTML = "";
+  const grouped = {};
+  CAT_ORDER.forEach(c => grouped[c] = []);
+  res.checks.forEach(c => grouped[c.cat].push(c));
+
+  CAT_ORDER.forEach(catKey => {
+    const meta = CATEGORIES[catKey];
+    const items = grouped[catKey];
+    const flagCount = items.filter(i => !i.pass).length;
+    const card = document.createElement("div");
+    card.className = "cat-card";
+    card.innerHTML = `
+      <div class="cat-head">
+        <div class="cat-icon mono" style="background:${meta.color}22; color:${meta.color}; border:1px solid ${meta.color}44;">${meta.icon}</div>
+        <div class="cat-name mono">${meta.name}</div>
+        <div class="cat-count mono">${flagCount} flag${flagCount===1?'':'s'} / ${items.length}</div>
+      </div>
+    `;
+    items.forEach(item => {
+      let cls, label;
+      if(item.pass){
+        cls = "pass"; label = "🟢 GREEN";
+      } else if(item.weight >= 20){
+        cls = "fail"; label = "🔴 RED";
+      } else {
+        cls = "warn"; label = "🟡 YELLOW";
+      }
+      const row = document.createElement("div");
+      row.className = "check-row";
+      row.innerHTML = `
+        <div class="check-tag mono ${cls}">${label}</div>
+        <div class="check-body">
+          <div class="label">${item.label}</div>
+          <div class="desc">${item.desc}</div>
+        </div>
+      `;
+      card.appendChild(row);
+    });
+    catsEl.appendChild(card);
+  });
+  catsEl.classList.add("show");
+  document.getElementById("footnote").classList.add("show");
+}
+
+const btn = document.getElementById("scanBtn");
+const input = document.getElementById("urlInput");
+const sweep = document.getElementById("sweep");
+
+function runScan(){
+  const val = input.value.trim();
+  if(!val) return;
+  document.getElementById("verdictBanner").classList.remove("show");
+  document.getElementById("categories").classList.remove("show");
+  document.getElementById("footnote").classList.remove("show");
+  document.getElementById("blipLayer").innerHTML = "";
+  sweep.classList.add("active");
+  btn.disabled = true;
+  setTimeout(() => {
+    const res = analyze(val);
+    sweep.classList.remove("active");
+    btn.disabled = false;
+    renderResult(res);
+  }, 900);
+}
+
+btn.addEventListener("click", runScan);
+input.addEventListener("keydown", e => { if(e.key === "Enter") runScan(); });
+
+/* ---- Landing screen boot sequence ---- */
+(function(){
+  const lines = [
+    "> initializing forensic engine...",
+    "> loading 17 detection rules across 5 categories...",
+    "> local execution only — no network calls...",
+    "> ready."
+  ];
+  const typedEl = document.getElementById("typedLine");
+  const enterBtn = document.getElementById("enterBtn");
+  const landingFoot = document.getElementById("landingFoot");
+  const cursor = `<span class="cursor"></span>`;
+
+  let li = 0, ci = 0;
+  function typeStep(){
+    if(li >= lines.length){
+      enterBtn.classList.add("ready");
+      landingFoot.classList.add("ready");
+      return;
+    }
+    const line = lines[li];
+    if(ci <= line.length){
+      typedEl.innerHTML = line.slice(0, ci) + cursor;
+      ci++;
+      setTimeout(typeStep, li === lines.length-1 ? 26 : 16);
+    } else {
+      li++; ci = 0;
+      setTimeout(typeStep, 260);
+    }
+  }
+  setTimeout(typeStep, 350);
+
+  const landing = document.getElementById("landing");
+  const appView = document.getElementById("appView");
+  const flash = document.getElementById("flash");
+
+  enterBtn.addEventListener("click", () => {
+    flash.classList.add("fire");
+    landing.classList.add("hide");
+    setTimeout(() => {
+      landing.style.display = "none";
+      appView.style.display = "block";
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => appView.classList.add("show"));
+      });
+      document.getElementById("urlInput").focus();
+    }, 480);
+  });
+
+  const backBtn = document.getElementById("backBtn");
+  backBtn.addEventListener("click", () => {
+    appView.classList.remove("show");
+    setTimeout(() => {
+      appView.style.display = "none";
+      landing.style.display = "flex";
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => landing.classList.remove("hide"));
+      });
+    }, 480);
+  });
+})();
+</script>
+</body>
+</html>
